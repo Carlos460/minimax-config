@@ -19,11 +19,22 @@ end
 nmap('[p', '<Cmd>exe "iput! " . v:register<CR>', 'Paste Above')
 nmap(']p', '<Cmd>exe "iput "  . v:register<CR>', 'Paste Below')
 
--- Ported from the old config
-vim.keymap.set('i', 'jk', '<Esc>', { desc = 'Exit Insert mode' })
+-- `jk` to leave Insert mode is a 'mini.keymap' combo, see 'plugin/30_mini.lua'
+
+-- Toggle LSP inlay hints, next to the 'mini.basics' toggles (`\d`, `\w`, ...)
+local toggle_inlay_hints = function()
+  vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+end
+nmap('\\H', toggle_inlay_hints, 'Toggle inlay hints')
+
+-- Center cursor after long jumps (`zz` = center, `zv` = open folds at match)
+nmap('<C-d>', '<C-d>zz', 'Scroll down (centered)')
+nmap('<C-u>', '<C-u>zz', 'Scroll up (centered)')
+nmap('n',     'nzzzv',   'Next match (centered)')
+nmap('N',     'Nzzzv',   'Prev match (centered)')
 
 -- Plugin mappings outside of Leader are next to their plugin:
--- - flash, treesitter-context - 'plugin/40_plugins.lua'
+-- - treesitter-context - 'plugin/40_plugins.lua'
 -- - debugger function keys (<F5>, <F10>-<F12>) - 'plugin/60_dap.lua'
 
 -- Many general mappings are created by 'mini.basics'. See 'plugin/30_mini.lua'
@@ -70,7 +81,6 @@ Config.leader_group_clues = {
   { mode = 'n', keys = '<Leader>s', desc = '+Session' },
   { mode = 'n', keys = '<Leader>t', desc = '+Terminal' },
   { mode = 'n', keys = '<Leader>v', desc = '+Visits' },
-  { mode = 'n', keys = '<Leader>x', desc = '+Trouble' },
 
   { mode = 'x', keys = '<Leader>c', desc = '+Code (C/C++)' },
   { mode = 'x', keys = '<Leader>d', desc = '+Debug' },
@@ -264,8 +274,10 @@ nmap_leader('vL', '<Cmd>lua MiniVisits.remove_label()<CR>',       'Remove label'
 -- Old maps that clashed with MiniMax were moved (old -> new):
 -- - `<Leader>sh` clangd source/header -> `<Leader>ch` (`<Leader>s` is Session)
 -- - `<Leader>m{k,c,m,v}` make/valgrind -> `<Leader>r{k,c,m,v}` (`<Leader>m` is Map)
--- - `<Leader>t{x,X,s,r,q}` Trouble    -> `<Leader>x{x,X,s,r,q}` (`<Leader>t` is Terminal)
 -- - `<Leader>tc` treesitter context   -> `<Leader>oc`
+-- - `<Leader>ih` inlay hints          -> `\H` (with the other 'mini.basics' toggles)
+-- - Trouble lists were replaced by 'mini.pick' / 'mini.extra' pickers:
+--   diagnostics `<Leader>fd`/`fD`, symbols `fS`, references `fR`, quickfix `<Leader>eq`
 -- - `<Leader>ft` now greps with 'mini.pick' instead of Telescope
 -- Non-Leader moves are noted in 'plugin/40_plugins.lua'.
 
@@ -311,13 +323,6 @@ nmap_leader('ft', pick_todos, 'TODO comments')
 -- g is for 'Git'
 nmap_leader('gg', '<Cmd>LazyGit<CR>', 'LazyGit')
 
--- i is for 'Inlay hints'
-local toggle_inlay_hints = function()
-  vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
-end
-
-nmap_leader('ih', toggle_inlay_hints, 'Toggle inlay hints')
-
 -- o is for 'Other'
 nmap_leader('oc', '<Cmd>lua require("treesitter-context").toggle()<CR>', 'Toggle treesitter context')
 
@@ -327,11 +332,4 @@ nmap_leader('oc', '<Cmd>lua require("treesitter-context").toggle()<CR>', 'Toggle
 nmap_leader('rc', function() Config.cdev.make({ 'clean' }) end, 'make clean')
 nmap_leader('rk', function() Config.cdev.make() end,            'make build')
 nmap_leader('rm', function() Config.cdev.make_prompt() end,     'make with args')
-
--- x is for 'Trouble'
-nmap_leader('xq', '<Cmd>Trouble qflist toggle<CR>',                            'Quickfix list')
-nmap_leader('xr', '<Cmd>Trouble lsp toggle focus=false win.position=right<CR>', 'LSP refs/defs')
-nmap_leader('xs', '<Cmd>Trouble symbols toggle focus=false<CR>',               'Document symbols')
-nmap_leader('xx', '<Cmd>Trouble diagnostics toggle filter.buf=0<CR>',          'Buffer diagnostics')
-nmap_leader('xX', '<Cmd>Trouble diagnostics toggle<CR>',                       'Workspace diagnostics')
 -- stylua: ignore end

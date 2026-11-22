@@ -35,7 +35,7 @@ Inside a picker: type to filter, `<C-n>`/`<C-p>` to move, `<Tab>` to preview,
 | `<C-h/j/k/l>` | Move between windows |
 | `<C-s>` | Save |
 
-In the explorer: `l` to open, `h` to go up, edit the listing to create, rename or
+In the explorer: `l` to open (closes explorer on a file), `L` to open and keep it, `h` to go up, edit the listing to create, rename or
 delete files, then `=` to apply. `g?` shows all keys.
 
 ## LSP
@@ -52,7 +52,7 @@ delete files, then `=` to apply. `g?` shows all keys.
 | `<Space>lf` | Format (buffer, or selection in Visual mode). Also runs on save |
 | `<Space>ld` | Diagnostic popup |
 | `[d` / `]d` | Previous / next diagnostic |
-| `<Space>ih` | Toggle inlay hints |
+| `\H` | Toggle inlay hints |
 
 ## Completion and snippets
 
@@ -63,15 +63,6 @@ delete files, then `=` to apply. `g?` shows all keys.
 | `<C-Space>` | Trigger completion |
 | `<C-j>` | Expand snippet |
 | `<C-l>` / `<C-h>` | Next / previous snippet placeholder |
-
-## Trouble lists
-
-| Key | Action |
-|---|---|
-| `<Space>xx` / `xX` | Diagnostics: buffer / workspace |
-| `<Space>xs` | Document symbols |
-| `<Space>xr` | LSP references / definitions |
-| `<Space>xq` | Quickfix list |
 
 ## C / C++
 
@@ -88,7 +79,7 @@ delete files, then `=` to apply. `g?` shows all keys.
 
 | Key | Action |
 |---|---|
-| `<Space>rk` | `make` in the background; errors go to quickfix / Trouble |
+| `<Space>rk` | `make` in the background; errors go to quickfix |
 | `<Space>rc` | `make clean` |
 | `<Space>rm` | `make` with arguments |
 | `<Space>rv` | Run a program under valgrind (C/C++ buffers) |
@@ -137,9 +128,9 @@ example one ending in `gdb --args ./app --flag`) and debugs that command.
 
 | Key | Action |
 |---|---|
-| `S` | Flash jump to any visible location |
-| `<M-s>` | Flash select a tree-sitter node |
-| `<CR>` | 'mini.jump2d' jump |
+| `<CR>` | 'mini.jump2d' jump to any visible location |
+| `an` / `in` (Visual) | Expand / shrink selection by tree-sitter node |
+| `<C-d>` / `<C-u>`, `n` / `N` | Scroll / next match, cursor centered |
 | `f`/`t` then `;` | Jump to character, `;` repeats |
 | `[e` | Jump to the enclosing function / block (treesitter context) |
 | `<Space>oc` | Toggle the sticky context header |
@@ -172,7 +163,8 @@ example one ending in `gdb --args ./app --flag`) and debugs that command.
 |---|---|
 | `\d` | Diagnostics |
 | `\w` | Line wrap |
-| `\h` | Search highlight |
+| `\h` | Search highlight (`<C-c>` clears it) |
+| `\H` | Inlay hints |
 | `\r` | Relative numbers |
 | `\s` | Spell check |
 

@@ -23,7 +23,7 @@
 vim.g.mapleader = ' ' -- Use `<Space>` as <Leader> key
 
 vim.o.mouse       = 'a'            -- Enable mouse
-vim.o.mousescroll = 'ver:25,hor:6' -- Customize mouse scroll
+vim.o.mousescroll = 'ver:2,hor:4'  -- Lines/columns scrolled per wheel tick
 vim.o.switchbuf   = 'usetab'       -- Use already opened buffers when switching
 vim.o.undofile    = true           -- Enable persistent undo
 
@@ -42,6 +42,8 @@ vim.o.pumborder      = 'single'   -- Use border in popup menu
 vim.o.pumheight      = 10         -- Make popup menu smaller
 vim.o.pummaxwidth    = 100        -- Make popup menu not too wide
 vim.o.ruler          = false      -- Don't show cursor coordinates
+vim.o.scrolloff      = 8          -- Keep 8 lines above/below cursor
+vim.o.sidescrolloff  = 8          -- Keep 8 columns left/right of cursor
 vim.o.shortmess      = 'CFOSWaco' -- Disable some built-in completion messages
 vim.o.showmode       = false      -- Don't show mode in command line
 vim.o.signcolumn     = 'yes'      -- Always show signcolumn (less flicker)
@@ -70,11 +72,12 @@ vim.o.formatoptions = 'rqnl1j'-- Improve comment editing
 vim.o.ignorecase    = true    -- Ignore case during search
 vim.o.incsearch     = true    -- Show search matches while typing
 vim.o.infercase     = true    -- Infer case in built-in completion
-vim.o.shiftwidth    = 2       -- Use this number of spaces for indentation
+vim.o.shiftwidth    = 4       -- Use this number of spaces for indentation
 vim.o.smartcase     = true    -- Respect case if search pattern has upper case
 vim.o.smartindent   = true    -- Make indenting smart
 vim.o.spelloptions  = 'camel' -- Treat camelCase word parts as separate words
-vim.o.tabstop       = 2       -- Show tab as this number of spaces
+vim.o.softtabstop   = -1      -- Make <Tab>/<BS> use 'shiftwidth'
+vim.o.tabstop       = 4       -- Show tab as this number of spaces
 vim.o.virtualedit   = 'block' -- Allow going past end of line in blockwise mode
 
 vim.o.iskeyword = '@,48-57,_,192-255,-' -- Treat dash as `word` textobject part
@@ -95,6 +98,16 @@ vim.o.completetimeout = 100                             -- Limit sources delay
 -- Do on `FileType` to always override these changes from filetype plugins.
 local f = function() vim.cmd('setlocal formatoptions-=c formatoptions-=o') end
 Config.new_autocmd('FileType', nil, f, "Proper 'formatoptions'")
+
+-- Indentation is 4 spaces, except for languages whose convention is 2 spaces.
+-- Project '.editorconfig' files still override this (see `:h editorconfig`).
+local two_space_fts = {
+  'lua', 'vim', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact',
+  'json', 'jsonc', 'json5', 'html', 'css', 'scss', 'less', 'vue', 'svelte',
+  'yaml', 'markdown', 'ruby', 'nix',
+}
+local two_spaces = function() vim.bo.shiftwidth, vim.bo.tabstop = 2, 2 end
+Config.new_autocmd('FileType', two_space_fts, two_spaces, 'Use 2-space indent')
 
 -- There are other autocommands created by 'mini.basics'. See 'plugin/30_mini.lua'.
 

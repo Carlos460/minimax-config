@@ -174,6 +174,11 @@ later(function()
   -- - `:h conform-options`
   -- - `:h conform-formatters`
   local prettier = { 'prettierd', 'prettier', stop_after_first = true }
+
+  -- A project's own formatter config wins over the editor indent settings
+  local has_project_config = function(ctx, names)
+    return #vim.fs.find(names, { upward = true, path = ctx.dirname }) > 0
+  end
   require('conform').setup({
     default_format_opts = {
       -- Allow formatting from LSP server if no dedicated formatter is available
@@ -198,6 +203,21 @@ later(function()
     formatters = {
       -- php-cs-fixer refuses to run on PHP versions newer than it officially supports
       php_cs_fixer = { env = { PHP_CS_FIXER_IGNORE_ENV = '1' } },
+      -- Without a project config stylua uses tabs: use spaces with the buffer's width
+      stylua = {
+        prepend_args = function(_, ctx)
+          if has_project_config(ctx, { '.stylua.toml', 'stylua.toml', '.editorconfig' }) then return {} end
+          return { '--indent-type', 'Spaces', '--indent-width', tostring(vim.bo[ctx.buf].shiftwidth) }
+        end,
+      },
+      -- Without a '.clang-format' file: LLVM style with the buffer's indent width
+      ['clang-format'] = {
+        prepend_args = function(_, ctx)
+          if has_project_config(ctx, { '.clang-format', '_clang-format' }) then return {} end
+          local width = vim.bo[ctx.buf].shiftwidth
+          return { '--style={BasedOnStyle: LLVM, IndentWidth: ' .. width .. ', UseTab: Never}' }
+        end,
+      },
     },
     -- Format on save. php-cs-fixer boots PHP on every run and often needs >500ms
     format_on_save = function(buf_id)
@@ -278,29 +298,10 @@ end)
 -- Shared dependency of several plugins below
 later(function() add({ 'https://github.com/nvim-lua/plenary.nvim' }) end)
 
--- Diagnostics / symbols / quickfix in a nicer list (`<Leader>x`)
-later(function()
-  add({ 'https://github.com/folke/trouble.nvim' })
-  require('trouble').setup({})
-end)
-
--- Jump-anywhere motions. Moved from the old config, because 'mini.surround'
--- uses `s`:
--- - `s` (jump)              -> `S`
--- - `S` (treesitter select) -> `<M-s>`
--- `r` / `R` (Operator-pending) and `<C-s>` (in `/` search) are unchanged.
-later(function()
-  add({ 'https://github.com/folke/flash.nvim' })
-  local flash = require('flash')
-  flash.setup({})
-
-  local map = vim.keymap.set
-  map({ 'n', 'x', 'o' }, 'S', flash.jump, { desc = 'Flash jump' })
-  map({ 'n', 'x', 'o' }, '<M-s>', flash.treesitter, { desc = 'Flash treesitter select' })
-  map('o', 'r', flash.remote, { desc = 'Flash remote' })
-  map({ 'o', 'x' }, 'R', flash.treesitter_search, { desc = 'Flash treesitter search' })
-  map('c', '<C-s>', flash.toggle, { desc = 'Flash toggle in search' })
-end)
+-- Replaced by MINI / built-ins:
+-- - trouble.nvim -> 'mini.pick' / 'mini.extra' pickers (`<Leader>f`) and quickfix
+-- - flash.nvim   -> 'mini.jump2d' (`<CR>`), 'mini.jump' (`f`/`t`), and built-in
+--   tree-sitter selection in Visual mode (`an` / `in` / `]n` / `[n`)
 
 -- Doxygen / JSDoc comment generation (`<Leader>cc`)
 later(function()

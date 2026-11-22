@@ -32,7 +32,7 @@ M.make = function(args)
         vim.notify(title .. ': ok')
       else
         vim.notify(('%s: exit %d, %d issue(s)'):format(title, res.code, #errors), vim.log.levels.WARN)
-        vim.cmd(#errors > 0 and 'Trouble qflist open' or 'copen')
+        vim.cmd('copen')
       end
     end)
   end)

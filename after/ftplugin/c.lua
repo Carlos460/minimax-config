@@ -1,10 +1,6 @@
 -- C (and C++, see 'after/ftplugin/cpp.lua') buffer settings ported from the old config
 
--- 4-space indentation (everything else uses 2)
-vim.bo.expandtab = true
-vim.bo.tabstop = 4
-vim.bo.shiftwidth = 4
-vim.bo.softtabstop = 4
+-- Indentation (4 spaces) is the global default from 'plugin/10_options.lua'
 
 -- Helpers from 'plugin/50_cdev.lua'.
 -- `<Leader>mv` from the old config moved to `<Leader>rv` (`<Leader>m` is 'mini.map').
