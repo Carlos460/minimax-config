@@ -19,6 +19,13 @@ end
 nmap('[p', '<Cmd>exe "iput! " . v:register<CR>', 'Paste Above')
 nmap(']p', '<Cmd>exe "iput "  . v:register<CR>', 'Paste Below')
 
+-- Ported from the old config
+vim.keymap.set('i', 'jk', '<Esc>', { desc = 'Exit Insert mode' })
+
+-- Plugin mappings outside of Leader are next to their plugin:
+-- - flash, treesitter-context - 'plugin/40_plugins.lua'
+-- - debugger function keys (<F5>, <F10>-<F12>) - 'plugin/60_dap.lua'
+
 -- Many general mappings are created by 'mini.basics'. See 'plugin/30_mini.lua'
 
 -- stylua: ignore start
@@ -51,16 +58,22 @@ nmap(']p', '<Cmd>exe "iput "  . v:register<CR>', 'Paste Below')
 -- Add an entry if you create a new group.
 Config.leader_group_clues = {
   { mode = 'n', keys = '<Leader>b', desc = '+Buffer' },
+  { mode = 'n', keys = '<Leader>c', desc = '+Code (C/C++)' },
+  { mode = 'n', keys = '<Leader>d', desc = '+Debug' },
   { mode = 'n', keys = '<Leader>e', desc = '+Explore/Edit' },
   { mode = 'n', keys = '<Leader>f', desc = '+Find' },
   { mode = 'n', keys = '<Leader>g', desc = '+Git' },
   { mode = 'n', keys = '<Leader>l', desc = '+Language' },
   { mode = 'n', keys = '<Leader>m', desc = '+Map' },
   { mode = 'n', keys = '<Leader>o', desc = '+Other' },
+  { mode = 'n', keys = '<Leader>r', desc = '+Run (make)' },
   { mode = 'n', keys = '<Leader>s', desc = '+Session' },
   { mode = 'n', keys = '<Leader>t', desc = '+Terminal' },
   { mode = 'n', keys = '<Leader>v', desc = '+Visits' },
+  { mode = 'n', keys = '<Leader>x', desc = '+Trouble' },
 
+  { mode = 'x', keys = '<Leader>c', desc = '+Code (C/C++)' },
+  { mode = 'x', keys = '<Leader>d', desc = '+Debug' },
   { mode = 'x', keys = '<Leader>g', desc = '+Git' },
   { mode = 'x', keys = '<Leader>l', desc = '+Language' },
 }
@@ -246,4 +259,79 @@ nmap_leader('vv', '<Cmd>lua MiniVisits.add_label("core")<CR>',    'Add "core" la
 nmap_leader('vV', '<Cmd>lua MiniVisits.remove_label("core")<CR>', 'Remove "core" label')
 nmap_leader('vl', '<Cmd>lua MiniVisits.add_label()<CR>',          'Add label')
 nmap_leader('vL', '<Cmd>lua MiniVisits.remove_label()<CR>',       'Remove label')
+
+-- Ported from the old config =================================================
+-- Old maps that clashed with MiniMax were moved (old -> new):
+-- - `<Leader>sh` clangd source/header -> `<Leader>ch` (`<Leader>s` is Session)
+-- - `<Leader>m{k,c,m,v}` make/valgrind -> `<Leader>r{k,c,m,v}` (`<Leader>m` is Map)
+-- - `<Leader>t{x,X,s,r,q}` Trouble    -> `<Leader>x{x,X,s,r,q}` (`<Leader>t` is Terminal)
+-- - `<Leader>tc` treesitter context   -> `<Leader>oc`
+-- - `<Leader>ft` now greps with 'mini.pick' instead of Telescope
+-- Non-Leader moves are noted in 'plugin/40_plugins.lua'.
+
+-- c is for 'Code' (clangd, CMake, doc comments)
+nmap_leader('cA', '<Cmd>ClangdAST<CR>',                         'clangd AST')
+nmap_leader('cb', '<Cmd>CMakeBuild<CR>',                        'CMake build')
+nmap_leader('cc', '<Cmd>lua require("neogen").generate()<CR>',  'Generate doc comment')
+nmap_leader('cd', '<Cmd>CMakeDebug<CR>',                        'CMake debug target')
+nmap_leader('cg', '<Cmd>CMakeGenerate<CR>',                     'CMake generate')
+nmap_leader('ch', '<Cmd>LspClangdSwitchSourceHeader<CR>',       'Switch source/header')
+nmap_leader('cH', '<Cmd>ClangdTypeHierarchy<CR>',               'clangd type hierarchy')
+nmap_leader('ci', '<Cmd>ClangdSymbolInfo<CR>',                  'clangd symbol info')
+nmap_leader('cr', '<Cmd>CMakeRun<CR>',                          'CMake run target')
+nmap_leader('ct', '<Cmd>CMakeSelectLaunchTarget<CR>',           'CMake select launch target')
+nmap_leader('cv', '<Cmd>CMakeSelectBuildType<CR>',              'CMake select build type')
+
+xmap_leader('cA', ':ClangdAST<CR>',                             'clangd AST (selection)')
+
+-- d is for 'Debug' (nvim-dap). See 'plugin/60_dap.lua'.
+local dap_cond_breakpoint = function()
+  require('dap').set_breakpoint(vim.fn.input('Breakpoint condition: '))
+end
+
+nmap_leader('db', '<Cmd>lua require("dap").toggle_breakpoint()<CR>',   'Toggle breakpoint')
+nmap_leader('dB', dap_cond_breakpoint,                                  'Conditional breakpoint')
+nmap_leader('dh', '<Cmd>lua require("dap.ui.widgets").hover()<CR>',    'Hover value')
+nmap_leader('dl', '<Cmd>lua require("dap").run_last()<CR>',            'Run last')
+nmap_leader('dr', '<Cmd>lua require("dap").repl.toggle()<CR>',         'Toggle REPL')
+nmap_leader('dt', '<Cmd>lua require("dap").terminate()<CR>',           'Terminate')
+nmap_leader('du', '<Cmd>lua require("dapui").toggle()<CR>',            'Toggle UI')
+
+xmap_leader('dh', '<Cmd>lua require("dap.ui.widgets").hover()<CR>',    'Hover value')
+
+-- f is for 'Find'
+-- Grep the project for the words 'mini.hipatterns' highlights
+local pick_todos = function()
+  local pattern = '\\b(FIXME|Fixme|fixme|HACK|Hack|hack|TODO|Todo|todo|NOTE|Note|note)\\b'
+  MiniPick.builtin.grep({ pattern = pattern }, { source = { name = 'TODOs' } })
+end
+
+nmap_leader('ft', pick_todos, 'TODO comments')
+
+-- g is for 'Git'
+nmap_leader('gg', '<Cmd>LazyGit<CR>', 'LazyGit')
+
+-- i is for 'Inlay hints'
+local toggle_inlay_hints = function()
+  vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+end
+
+nmap_leader('ih', toggle_inlay_hints, 'Toggle inlay hints')
+
+-- o is for 'Other'
+nmap_leader('oc', '<Cmd>lua require("treesitter-context").toggle()<CR>', 'Toggle treesitter context')
+
+-- r is for 'Run' (async make -> quickfix). See 'plugin/50_cdev.lua'.
+-- C/C++ buffers also get `<Leader>rv` (valgrind) and `<Leader>k` (man page),
+-- see 'after/ftplugin/c.lua'.
+nmap_leader('rc', function() Config.cdev.make({ 'clean' }) end, 'make clean')
+nmap_leader('rk', function() Config.cdev.make() end,            'make build')
+nmap_leader('rm', function() Config.cdev.make_prompt() end,     'make with args')
+
+-- x is for 'Trouble'
+nmap_leader('xq', '<Cmd>Trouble qflist toggle<CR>',                            'Quickfix list')
+nmap_leader('xr', '<Cmd>Trouble lsp toggle focus=false win.position=right<CR>', 'LSP refs/defs')
+nmap_leader('xs', '<Cmd>Trouble symbols toggle focus=false<CR>',               'Document symbols')
+nmap_leader('xx', '<Cmd>Trouble diagnostics toggle filter.buf=0<CR>',          'Buffer diagnostics')
+nmap_leader('xX', '<Cmd>Trouble diagnostics toggle<CR>',                       'Workspace diagnostics')
 -- stylua: ignore end

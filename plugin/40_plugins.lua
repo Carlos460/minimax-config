@@ -55,6 +55,13 @@ now_if_args(function()
     'lua',
     'vimdoc',
     'markdown',
+    -- Ported from the old config
+    'luadoc', 'printf', 'vim',
+    'c', 'cpp', 'cmake', 'make',
+    'javascript', 'typescript', 'tsx', 'jsdoc',
+    'html', 'css', 'scss',
+    'php', 'phpdoc',
+    'json', 'markdown_inline', 'bash',
     -- Add here more languages with which you want to use tree-sitter
     -- To see available languages:
     -- - Execute `:=require('nvim-treesitter').get_available()`
@@ -74,8 +81,29 @@ now_if_args(function()
       table.insert(filetypes, ft)
     end
   end
-  local ts_start = function(ev) vim.treesitter.start(ev.buf) end
+  local ts_start = function(ev)
+    vim.treesitter.start(ev.buf)
+    -- Tree-sitter based indentation (ported from the old config)
+    vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+  end
   Config.new_autocmd('FileType', filetypes, ts_start, 'Start tree-sitter')
+end)
+
+-- Show enclosing function / struct / loop header at the top of the window.
+-- Toggle with `<Leader>oc`. Jump to the context with `[e` (was `[x` in the old
+-- config; 'mini.bracketed' uses `[x` for conflict markers).
+now_if_args(function()
+  add({ 'https://github.com/nvim-treesitter/nvim-treesitter-context' })
+  require('treesitter-context').setup({ max_lines = 3, multiline_threshold = 1 })
+
+  local go_to_context = function() require('treesitter-context').go_to_context(vim.v.count1) end
+  vim.keymap.set('n', '[e', go_to_context, { desc = 'Enclosing context' })
+end)
+
+-- Auto close / rename HTML, JSX and PHP tags
+now_if_args(function()
+  add({ 'https://github.com/windwp/nvim-ts-autotag' })
+  require('nvim-ts-autotag').setup()
 end)
 
 -- Language servers ===========================================================
@@ -96,16 +124,38 @@ end)
 --
 -- Troubleshooting:
 -- - Run `:checkhealth vim.lsp` to see potential issues.
+--
+-- Servers, formatters, linters and 'codelldb' are installed with Mason
+-- (ported from the old config). It must be set up before servers start, because
+-- it puts its 'bin/' directory on $PATH. Use `:Mason` to manage them.
+now_if_args(function()
+  add({ 'https://github.com/mason-org/mason.nvim' })
+  require('mason').setup()
+end)
+
 now_if_args(function()
   add({ 'https://github.com/neovim/nvim-lspconfig' })
 
   -- Use `:h vim.lsp.enable()` to automatically enable language server based on
   -- the rules provided by 'nvim-lspconfig'.
   -- Use `:h vim.lsp.config()` or 'after/lsp/' directory to configure servers.
-  -- Uncomment and tweak the following `vim.lsp.enable()` call to enable servers.
-  -- vim.lsp.enable({
-  --   -- For example, if `lua-language-server` is installed, use `'lua_ls'` entry
-  -- })
+  -- Server tweaks: 'after/lsp/clangd.lua', 'after/lsp/emmet_language_server.lua'
+  vim.lsp.enable({
+    'lua_ls',
+    'html',
+    'cssls',
+    'clangd', -- also runs clang-tidy when the project has '.clang-tidy'
+    'ts_ls',
+    'intelephense',
+    'emmet_language_server',
+    'eslint',
+  })
+end)
+
+-- Extra clangd features: AST, symbol info, type hierarchy (`<Leader>c`)
+later(function()
+  add({ 'https://github.com/p00f/clangd_extensions.nvim' })
+  require('clangd_extensions').setup({})
 end)
 
 -- Formatting =================================================================
@@ -123,6 +173,7 @@ later(function()
   -- - `:h Conform`
   -- - `:h conform-options`
   -- - `:h conform-formatters`
+  local prettier = { 'prettierd', 'prettier', stop_after_first = true }
   require('conform').setup({
     default_format_opts = {
       -- Allow formatting from LSP server if no dedicated formatter is available
@@ -130,8 +181,79 @@ later(function()
     },
     -- Map of filetype to formatters
     -- Make sure that necessary CLI tool is available
-    -- formatters_by_ft = { lua = { 'stylua' } },
+    formatters_by_ft = {
+      lua = { 'stylua' },
+      c = { 'clang-format' },
+      cpp = { 'clang-format' },
+      javascript = prettier,
+      typescript = prettier,
+      javascriptreact = prettier,
+      typescriptreact = prettier,
+      html = prettier,
+      css = prettier,
+      scss = prettier,
+      json = prettier,
+      php = { 'php_cs_fixer' },
+    },
+    formatters = {
+      -- php-cs-fixer refuses to run on PHP versions newer than it officially supports
+      php_cs_fixer = { env = { PHP_CS_FIXER_IGNORE_ENV = '1' } },
+    },
+    -- Format on save. php-cs-fixer boots PHP on every run and often needs >500ms
+    format_on_save = function(buf_id)
+      local slow = { php = 3000 }
+      return { timeout_ms = slow[vim.bo[buf_id].filetype] or 500, lsp_format = 'fallback' }
+    end,
   })
+end)
+
+-- Linting ====================================================================
+
+-- Linters that aren't language servers. eslint is handled by the eslint server
+-- and clang-tidy by clangd. A linter only runs when its executable is found
+-- (stylelint also needs a config file in the project).
+later(function()
+  add({ 'https://github.com/mfussenegger/nvim-lint' })
+  local lint = require('lint')
+
+  lint.linters_by_ft = {
+    php = { 'phpstan' },
+    css = { 'stylelint' },
+    scss = { 'stylelint' },
+  }
+
+  local stylelint_configs = {
+    '.stylelintrc', '.stylelintrc.json', '.stylelintrc.yml', '.stylelintrc.yaml',
+    '.stylelintrc.js', '.stylelintrc.cjs',
+    'stylelint.config.js', 'stylelint.config.cjs', 'stylelint.config.mjs',
+  }
+
+  local available_linters = function(buf_id)
+    local names = {}
+    for _, name in ipairs(lint.linters_by_ft[vim.bo[buf_id].filetype] or {}) do
+      local linter = lint.linters[name]
+      local cmd = type(linter) == 'table' and linter.cmd or name
+      if type(cmd) == 'function' then cmd = cmd() end
+
+      local ok = vim.fn.executable(cmd) == 1
+      if ok and name == 'stylelint' then
+        local path = vim.api.nvim_buf_get_name(buf_id)
+        ok = #vim.fs.find(stylelint_configs, { upward = true, path = path }) > 0
+      end
+      if ok then table.insert(names, name) end
+    end
+    return names
+  end
+
+  local try_lint = function(ev)
+    local names = available_linters(ev.buf)
+    if #names > 0 then lint.try_lint(names) end
+  end
+  local events = { 'BufReadPost', 'BufWritePost', 'InsertLeave' }
+  Config.new_autocmd(events, nil, try_lint, 'Lint buffer')
+
+  -- This loads after the first file is read, so lint that one now
+  try_lint({ buf = vim.api.nvim_get_current_buf() })
 end)
 
 -- Snippets ===================================================================
@@ -144,6 +266,56 @@ end)
 -- 'mini.snippets' is designed to work with it as seamlessly as possible.
 -- See `:h MiniSnippets.gen_loader.from_lang()`.
 later(function() add({ 'https://github.com/rafamadriz/friendly-snippets' }) end)
+
+-- Ported from the old config =================================================
+
+-- Gruvbox color scheme (replaces 'minischeme' from 'plugin/30_mini.lua')
+Config.now(function()
+  add({ 'https://github.com/ellisonleao/gruvbox.nvim' })
+  vim.cmd('colorscheme gruvbox')
+end)
+
+-- Shared dependency of several plugins below
+later(function() add({ 'https://github.com/nvim-lua/plenary.nvim' }) end)
+
+-- Diagnostics / symbols / quickfix in a nicer list (`<Leader>x`)
+later(function()
+  add({ 'https://github.com/folke/trouble.nvim' })
+  require('trouble').setup({})
+end)
+
+-- Jump-anywhere motions. Moved from the old config, because 'mini.surround'
+-- uses `s`:
+-- - `s` (jump)              -> `S`
+-- - `S` (treesitter select) -> `<M-s>`
+-- `r` / `R` (Operator-pending) and `<C-s>` (in `/` search) are unchanged.
+later(function()
+  add({ 'https://github.com/folke/flash.nvim' })
+  local flash = require('flash')
+  flash.setup({})
+
+  local map = vim.keymap.set
+  map({ 'n', 'x', 'o' }, 'S', flash.jump, { desc = 'Flash jump' })
+  map({ 'n', 'x', 'o' }, '<M-s>', flash.treesitter, { desc = 'Flash treesitter select' })
+  map('o', 'r', flash.remote, { desc = 'Flash remote' })
+  map({ 'o', 'x' }, 'R', flash.treesitter_search, { desc = 'Flash treesitter search' })
+  map('c', '<C-s>', flash.toggle, { desc = 'Flash toggle in search' })
+end)
+
+-- Doxygen / JSDoc comment generation (`<Leader>cc`)
+later(function()
+  add({ 'https://github.com/danymat/neogen' })
+  require('neogen').setup({ snippet_engine = 'mini' })
+end)
+
+-- LazyGit in a floating window (`<Leader>gg`). Needs the `lazygit` executable.
+later(function() add({ 'https://github.com/kdheepak/lazygit.nvim' }) end)
+
+-- CMake: generate / build / run / debug targets (`<Leader>c`)
+later(function()
+  add({ 'https://github.com/Civitasv/cmake-tools.nvim' })
+  require('cmake-tools').setup({})
+end)
 
 -- Honorable mentions =========================================================
 
