@@ -292,6 +292,7 @@ later(function() add({ 'https://github.com/rafamadriz/friendly-snippets' }) end)
 -- Gruvbox color scheme (replaces 'minischeme' from 'plugin/30_mini.lua')
 Config.now(function()
   add({ 'https://github.com/ellisonleao/gruvbox.nvim' })
+  require('gruvbox').setup({ contrast = 'hard' }) -- must come before :colorscheme
   vim.cmd('colorscheme gruvbox')
 end)
 
